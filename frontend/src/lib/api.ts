@@ -193,6 +193,49 @@ class ApiClient {
     const res = await this.request<{ success: boolean; data: ImpactMetric[] }>(url);
     return res.data;
   }
+
+  // =========================================================================
+  // PHASE 2: DATA ENGINEERING & CANONICAL WAREHOUSE ENDPOINTS
+  // =========================================================================
+
+  public async getDataStatus(): Promise<{
+    status: string;
+    bigquery_connected: boolean;
+    primary_dataset: string;
+    analytics_dataset: string;
+    canonical_tables_count: number;
+    total_records: number;
+    table_counts: Record<string, number>;
+  }> {
+    return this.request('/api/v1/data/status');
+  }
+
+  public async getGeographyById(geoId: string): Promise<{
+    status: string;
+    data: {
+      record: any;
+      hierarchy_path: any[];
+      subdivisions_count: number;
+      subdivisions: any[];
+    };
+  }> {
+    return this.request(`/api/v1/data/geography/${geoId}`);
+  }
+
+  public async getDataQuality(): Promise<{
+    status: string;
+    data: {
+      total_records: number;
+      table_summaries: Record<string, any>;
+      geographic_hierarchy_valid: boolean;
+      missing_geo_references: number;
+      provenance_sources: string[];
+      status: string;
+      timestamp: string;
+    };
+  }> {
+    return this.request('/api/v1/data/quality');
+  }
 }
 
 export const apiClient = new ApiClient('');

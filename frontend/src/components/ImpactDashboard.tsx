@@ -19,7 +19,7 @@ export const ImpactDashboard: React.FC = () => {
   useEffect(() => {
     fetchImpactEvaluations()
       .then(setEvaluations)
-      .catch((err) => console.error(err))
+      .catch((err: any) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
 

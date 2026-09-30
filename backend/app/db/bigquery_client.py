@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from app.config import settings
 from app.core.logging import logger
@@ -14,29 +15,34 @@ class BigQueryWarehouse:
     """
     BigQuery Client Abstraction for JANSETU.
     Establishes project & dataset configuration, lightweight connectivity health checks,
-    and reusable parameterized query and insert interfaces.
+    reusable parameterized query and insert interfaces, and canonical repository layers.
     """
+    CANONICAL_TABLES = [
+        "geography",
+        "demographics",
+        "infrastructure",
+        "investments",
+        "citizen_requests",
+        "citizen_request_embeddings",
+        "demand_clusters",
+        "hotspots",
+        "silent_need_signals",
+        "evidence_records",
+        "policy_scenarios",
+        "impact_metrics"
+    ]
+
     def __init__(self):
         self.project_id = settings.GCP_PROJECT_ID
         self.dataset_id = settings.BIGQUERY_DATASET
+        self.analytics_dataset_id = settings.BIGQUERY_ANALYTICS_DATASET
         self.location = settings.BIGQUERY_LOCATION
         self.use_mock = settings.BIGQUERY_USE_MOCK or not HAS_BIGQUERY_SDK
         self.client: Optional[Any] = None
 
         # In-memory structured datastore for tests & offline development
         self._store: Dict[str, List[Dict[str, Any]]] = {
-            "geography": [],
-            "demographics": [],
-            "infrastructure": [],
-            "investments": [],
-            "citizen_requests": [],
-            "citizen_request_embeddings": [],
-            "demand_clusters": [],
-            "hotspots": [],
-            "silent_need_signals": [],
-            "evidence_records": [],
-            "policy_scenarios": [],
-            "impact_metrics": []
+            tbl: [] for tbl in self.CANONICAL_TABLES
         }
 
         if not self.use_mock and HAS_BIGQUERY_SDK:
@@ -74,7 +80,7 @@ class BigQueryWarehouse:
             except Exception as e:
                 logger.error(f"BigQuery query execution error: {e}")
                 raise e
-        
+
         # When in mock mode, return relevant records based on query hints
         logger.debug(f"[Mock BigQuery] Executing query: {query[:80]}...")
         return []
@@ -105,4 +111,48 @@ class BigQueryWarehouse:
         if table_name in self._store:
             self._store[table_name] = []
 
+    def get_table_counts(self) -> Dict[str, int]:
+        """Returns row count for all canonical tables."""
+        return {tbl: len(self._store.get(tbl, [])) for tbl in self.CANONICAL_TABLES}
+
+    def run_migrations(self, migration_sql_path: Optional[str] = None) -> bool:
+        """
+        Executes reproducible initial schema migration.
+        In live BigQuery mode: executes DDL against BigQuery.
+        In mock mode: ensures all 12 canonical tables are initialized in _store.
+        """
+        if migration_sql_path is None:
+            migration_sql_path = str(Path(__file__).resolve().parent / "migrations" / "001_initial_schema.sql")
+
+        try:
+            with open(migration_sql_path, "r", encoding="utf-8") as f:
+                ddl = f.read()
+
+            if not self.use_mock and self.client:
+                job = self.client.query(ddl)
+                job.result()
+                logger.info("Successfully executed BigQuery migration DDL.")
+            else:
+                for tbl in self.CANONICAL_TABLES:
+                    if tbl not in self._store:
+                        self._store[tbl] = []
+                logger.info(f"Verified {len(self.CANONICAL_TABLES)} canonical tables in in-memory datastore.")
+            return True
+        except Exception as e:
+            logger.error(f"Error running migration: {e}")
+            return False
+
 db = BigQueryWarehouse()
+
+# Initialize Repository instances
+from app.db.repositories.geography_repository import GeographyRepository
+from app.db.repositories.demographics_repository import DemographicsRepository
+from app.db.repositories.infrastructure_repository import InfrastructureRepository
+from app.db.repositories.investment_repository import InvestmentRepository
+from app.db.repositories.citizen_request_repository import CitizenRequestRepository
+
+geography_repo = GeographyRepository(db)
+demographics_repo = DemographicsRepository(db)
+infrastructure_repo = InfrastructureRepository(db)
+investment_repo = InvestmentRepository(db)
+citizen_request_repo = CitizenRequestRepository(db)

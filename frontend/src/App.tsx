@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { apiClient } from './lib/api';
 import { Navbar } from './components/Navbar';
 import { Phase1FoundationShell } from './components/Phase1FoundationShell';
+import { DataFoundationView } from './components/DataFoundationView';
 import { CitizenPortal } from './components/CitizenPortal';
 import { CommandCenter } from './components/CommandCenter';
 import { HotspotsView } from './components/HotspotsView';
@@ -41,6 +42,7 @@ const AppContent: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
         {activeTab === 'foundation' && <Phase1FoundationShell />}
+        {activeTab === 'data-foundation' && <DataFoundationView />}
         {activeTab === 'citizen' && <CitizenPortal />}
         {activeTab === 'command-center' && <CommandCenter onSelectRegion={handleSelectRegion} />}
         {activeTab === 'hotspots' && <HotspotsView onSelectRegion={handleSelectRegion} />}

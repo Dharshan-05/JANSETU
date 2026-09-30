@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     # =========================================================================
     # BIGQUERY
     # =========================================================================
-    BIGQUERY_DATASET: str = Field(default="jansetu_intel", description="BigQuery dataset name")
+    BIGQUERY_DATASET: str = Field(default="jansetu_intel", description="Primary BigQuery dataset name")
+    BIGQUERY_ANALYTICS_DATASET: str = Field(
+        default="jansetu_analytics",
+        description="BigQuery analytics & derived intelligence dataset name"
+    )
     BIGQUERY_LOCATION: str = Field(default="asia-south1", description="BigQuery dataset location")
     BIGQUERY_USE_MOCK: bool = Field(
         default=True,

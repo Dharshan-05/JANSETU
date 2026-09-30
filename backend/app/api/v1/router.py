@@ -7,6 +7,7 @@ from app.api.v1.digital_twin import router as digital_twin_router
 from app.api.v1.evidence import router as evidence_router
 from app.api.v1.sandbox import router as sandbox_router
 from app.api.v1.impact import router as impact_router
+from app.api.v1.data import data_router
 
 api_v1_router = APIRouter()
 
@@ -17,8 +18,9 @@ async def get_api_v1_version():
     return {
         "version": "v1",
         "status": "active",
-        "phase": "PHASE 1 - FOUNDATION",
+        "phase": "PHASE 1 - FOUNDATION | PHASE 2 - DATA ENGINEERING",
         "modules": [
+            "data",
             "intake",
             "analytics",
             "hotspots",
@@ -30,6 +32,7 @@ async def get_api_v1_version():
         ]
     }
 
+api_v1_router.include_router(data_router)
 api_v1_router.include_router(intake_router)
 api_v1_router.include_router(analytics_router)
 api_v1_router.include_router(hotspots_router)
@@ -38,3 +41,4 @@ api_v1_router.include_router(digital_twin_router)
 api_v1_router.include_router(evidence_router)
 api_v1_router.include_router(sandbox_router)
 api_v1_router.include_router(impact_router)
+

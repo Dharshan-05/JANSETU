@@ -9,7 +9,8 @@ import {
   Sliders, 
   TrendingUp,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Database
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -20,6 +21,7 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: 'foundation', label: 'Phase 1 Foundation', icon: ShieldCheck },
+    { id: 'data-foundation', label: 'Data Foundation', icon: Database },
     { id: 'citizen', label: 'Citizen Voice', icon: Radio },
     { id: 'command-center', label: 'Command Center', icon: BarChart3 },
     { id: 'hotspots', label: 'Demand Hotspots', icon: MapPin },
