@@ -11,14 +11,24 @@ export interface ExtractedLocation {
 export interface GeminiExtraction {
   primary_category: string;
   subcategory: string;
-  specific_issue: string;
-  location: ExtractedLocation;
-  severity: number;
+  specific_issue?: string;
+  location?: ExtractedLocation;
+  raw_location_text?: string;
+  severity?: number;
+  severity_level?: number;
   urgency_score: number;
-  affected_group: string;
-  time_pattern: string;
-  key_entities: string[];
-  confidence: number;
+  affected_group?: string;
+  affected_demographic?: string;
+  time_pattern?: string;
+  key_entities?: string[];
+  extracted_entities?: string[];
+  confidence?: number;
+  confidence_score?: number;
+  infrastructure_gap?: string;
+  actionable_summary?: string;
+  hallucination_safeguards_passed?: boolean;
+  extracted_at?: string;
+  model_provenance?: string;
 }
 
 export interface IntakeResponse {
@@ -393,22 +403,6 @@ export interface CitizenRequestStatus {
 // =========================================================================
 // PHASE 4: AI PERCEPTION & SEMANTIC CLUSTERING TYPES
 // =========================================================================
-
-export interface GeminiExtraction {
-  primary_category: string;
-  subcategory: string;
-  urgency_score: number;
-  severity_level: number;
-  affected_demographic: string;
-  raw_location_text?: string;
-  extracted_entities: string[];
-  infrastructure_gap: string;
-  actionable_summary: string;
-  confidence_score: number;
-  hallucination_safeguards_passed: boolean;
-  extracted_at: string;
-  model_provenance?: string;
-}
 
 export interface AIPerceptionResult {
   success: boolean;

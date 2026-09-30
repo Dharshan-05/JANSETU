@@ -2,13 +2,15 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 
 // Vite environment variables with safe defaults
+const env = (typeof import.meta !== 'undefined' && (import.meta as any).env) || {};
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "mock-api-key-placeholder",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "jansetu-gov-ai.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "jansetu-gov-ai",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "jansetu-gov-ai.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:000000000000:web:000000000000"
+  apiKey: env.VITE_FIREBASE_API_KEY || "mock-api-key-placeholder",
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "jansetu-gov-ai.firebaseapp.com",
+  projectId: env.VITE_FIREBASE_PROJECT_ID || "jansetu-gov-ai",
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "jansetu-gov-ai.appspot.com",
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "000000000000",
+  appId: env.VITE_FIREBASE_APP_ID || "1:000000000000:web:000000000000"
 };
 
 let app: FirebaseApp;

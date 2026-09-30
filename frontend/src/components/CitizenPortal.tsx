@@ -780,9 +780,9 @@ export const CitizenPortal: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded font-bold text-xs ${
-                          result.extraction.severity >= 4 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+                          (result.extraction.severity ?? result.extraction.severity_level ?? 3) >= 4 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
                         }`}>
-                          Level {result.extraction.severity} / 5
+                          Level {result.extraction.severity ?? result.extraction.severity_level ?? 3} / 5
                         </span>
                         <span className="font-mono text-slate-300">
                           {Math.round(result.extraction.urgency_score * 100)}%
