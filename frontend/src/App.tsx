@@ -13,6 +13,7 @@ import { SilentNeedView } from './components/SilentNeedView';
 import { CivicDigitalTwinView } from './components/CivicDigitalTwinView';
 import { PolicySandbox } from './components/PolicySandbox';
 import { ImpactDashboard } from './components/ImpactDashboard';
+import { LearningDashboard } from './components/LearningDashboard';
 import { EvidenceModal } from './components/EvidenceModal';
 
 const AppContent: React.FC = () => {
@@ -69,6 +70,13 @@ const AppContent: React.FC = () => {
         )}
         {activeTab === 'sandbox' && <PolicySandbox />}
         {activeTab === 'impact' && <ImpactDashboard />}
+        {activeTab === 'learning' && (
+          <LearningDashboard 
+            onNavigateToImpact={(evalId) => {
+              setActiveTab('impact');
+            }} 
+          />
+        )}
       </main>
 
       {/* Global Grounded Evidence Modal */}

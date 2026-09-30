@@ -31,6 +31,11 @@ class BigQueryWarehouse:
         "policy_scenarios",
         "impact_metrics"
     ]
+    ANALYTICS_TABLES = [
+        "learning_candidates",
+        "model_versions",
+        "learning_audit_events"
+    ]
 
     def __init__(self):
         self.project_id = settings.GCP_PROJECT_ID
@@ -42,7 +47,7 @@ class BigQueryWarehouse:
 
         # In-memory structured datastore for tests & offline development
         self._store: Dict[str, List[Dict[str, Any]]] = {
-            tbl: [] for tbl in self.CANONICAL_TABLES
+            tbl: [] for tbl in self.CANONICAL_TABLES + self.ANALYTICS_TABLES
         }
 
         if not self.use_mock and HAS_BIGQUERY_SDK:
@@ -157,7 +162,7 @@ class BigQueryWarehouse:
                 job.result()
                 logger.info("Successfully executed BigQuery migration DDL.")
             else:
-                for tbl in self.CANONICAL_TABLES:
+                for tbl in self.CANONICAL_TABLES + self.ANALYTICS_TABLES:
                     if tbl not in self._store:
                         self._store[tbl] = []
                 logger.info(f"Verified {len(self.CANONICAL_TABLES)} canonical tables in in-memory datastore.")
@@ -176,6 +181,12 @@ from app.db.repositories.investment_repository import InvestmentRepository
 from app.db.repositories.citizen_request_repository import CitizenRequestRepository
 from app.db.repositories.embedding_repository import EmbeddingRepository
 from app.db.repositories.demand_cluster_repository import DemandClusterRepository
+from app.db.repositories.hotspot_repository import HotspotRepository
+from app.db.repositories.silent_need_repository import SilentNeedRepository
+from app.db.repositories.evidence_repository import EvidenceRepository
+from app.db.repositories.policy_scenario_repository import PolicyScenarioRepository
+from app.db.repositories.impact_repository import ImpactRepository
+from app.db.repositories.learning_repository import LearningRepository
 
 geography_repo = GeographyRepository(db)
 demographics_repo = DemographicsRepository(db)
@@ -184,3 +195,10 @@ investment_repo = InvestmentRepository(db)
 citizen_request_repo = CitizenRequestRepository(db)
 embedding_repo = EmbeddingRepository(db)
 demand_cluster_repo = DemandClusterRepository(db)
+hotspot_repo = HotspotRepository(db)
+silent_need_repo = SilentNeedRepository(db)
+evidence_repo = EvidenceRepository(db)
+policy_scenario_repo = PolicyScenarioRepository(db)
+impact_repo = ImpactRepository(db)
+learning_repo = LearningRepository(db)
+

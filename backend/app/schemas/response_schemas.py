@@ -55,6 +55,51 @@ class HotspotItem(BaseModel):
     top_issue: str
     total_requests: int
     status: str
+    hotspot_score: Optional[float] = None
+    velocity_score: Optional[float] = None
+    concentration_ratio: Optional[float] = None
+    explanation: Optional[Dict[str, Any]] = None
+    confidence_score: Optional[float] = 0.90
+    analytical_version: Optional[str] = "v5.0-deterministic"
+    disclaimer: Optional[str] = "AI-Derived Analytical Signal — Not Official Policy"
+
+class HotspotSummaryItem(BaseModel):
+    total_hotspots: int
+    critical_count: int
+    high_count: int
+    moderate_count: int
+    category_breakdown: Dict[str, int]
+    state_breakdown: Dict[str, int]
+    analytical_version: str = "v5.0-deterministic"
+    disclaimer: str = "AI-Derived Analytical Signal — Not Official Policy"
+
+class DemandShadowMatrixItem(BaseModel):
+    geo_id: str
+    region_name: str
+    state_code: str
+    geo_level: Any = "district"
+    latitude: float
+    longitude: float
+    population: int
+    digital_access_score: float
+    voice_intensity: float
+    infrastructure_need: float
+    discrepancy_magnitude: float
+    raw_request_count: int
+    quadrant: str
+    quadrant_label: str
+    quadrant_description: str
+    action_guidance: str
+    status_color: str
+    category: str
+    time_window_days: int
+    analytical_version: str = "v5.0-deterministic"
+    disclaimer: str = "AI-Derived Analytical Signal — Not Official Policy"
+
+class DemandShadowResponse(BaseModel):
+    matrix: List[DemandShadowMatrixItem]
+    summary: Dict[str, Any]
+    disclaimer: str = "AI-Derived Analytical Signal — Not Official Policy"
 
 class SilentNeedSignalItem(BaseModel):
     signal_id: str
@@ -68,12 +113,33 @@ class SilentNeedSignalItem(BaseModel):
     population_vulnerability: float
     discrepancy_magnitude: float
     signal_confidence: float
-    validation_status: str
-    ai_hypothesis: str
-    latitude: float
-    longitude: float
-    why_summary: str
-    supporting_evidence_count: int
+    validation_status: str = "POTENTIAL_SIGNAL_UNVALIDATED"
+    ai_hypothesis: Optional[str] = None
+    latitude: float = 0.0
+    longitude: float = 0.0
+    why_summary: Optional[str] = None
+    supporting_evidence_count: int = 3
+    # Phase 6 Core additions
+    infra_deficit: Optional[float] = None
+    vulnerability_score: Optional[float] = None
+    digital_access: Optional[float] = None
+    voice_density: Optional[float] = None
+    need_score: Optional[float] = None
+    discrepancy: Optional[float] = None
+    signal_strength: Optional[float] = None
+    signal_class: Optional[str] = "POTENTIAL"
+    triggered: Optional[bool] = True
+    trigger_reason: Optional[str] = "Mathematical discrepancy, elevated deficit, and limited digital connectivity verified."
+    population: Optional[int] = None
+    request_count: Optional[int] = None
+    infrastructure_indicator_count: Optional[int] = 1
+    explanation: Optional[Dict[str, Any]] = None
+    investment_context: Optional[Dict[str, Any]] = None
+    analytical_version: str = "v6.0-deterministic"
+    requires_field_validation: bool = True
+    disclaimer: str = "AI-Derived Analytical Signal — Not Official Policy"
+    validation_requirement: str = "Potential Silent Need Signal — requires administrative field validation."
+
 
 class EvidenceTrailItem(BaseModel):
     evidence_type: str

@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Sparkles,
   ShieldCheck,
-  Database
+  Database,
+  Brain
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -31,6 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'digital-twin', label: 'Civic Digital Twin', icon: Cpu },
     { id: 'sandbox', label: 'Policy Sandbox', icon: Sliders },
     { id: 'impact', label: 'Impact Engine', icon: TrendingUp },
+    { id: 'learning', label: 'Learning Lab', icon: Brain },
   ];
 
   return (

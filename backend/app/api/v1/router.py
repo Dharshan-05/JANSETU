@@ -7,6 +7,8 @@ from app.api.v1.digital_twin import router as digital_twin_router
 from app.api.v1.evidence import router as evidence_router
 from app.api.v1.sandbox import router as sandbox_router
 from app.api.v1.impact import router as impact_router
+from app.api.v1.learning import router as learning_router
+from app.api.v1.demand_shadow import router as demand_shadow_router
 from app.api.v1.data import data_router
 from app.api.v1.ai import router as ai_router
 
@@ -19,18 +21,20 @@ async def get_api_v1_version():
     return {
         "version": "v1",
         "status": "active",
-        "phase": "PHASE 1 - FOUNDATION | PHASE 2 - DATA ENGINEERING | PHASE 3 - MULTILINGUAL INTAKE | PHASE 4 - AI PERCEPTION",
+        "phase": "PHASE 1 - FOUNDATION | PHASE 2 - DATA ENGINEERING | PHASE 3 - MULTILINGUAL INTAKE | PHASE 4 - AI PERCEPTION | PHASE 5 - DEMAND HOTSPOTS & DEMAND SHADOW | PHASE 6 - POTENTIAL SILENT NEED ENGINE | PHASE 7 - GROUNDED EVIDENCE ENGINE | PHASE 8 - POLICY SANDBOX & SCENARIO SIMULATION | PHASE 9 - CLOSED-LOOP IMPACT EVALUATION | PHASE 10 - CONTINUOUS LEARNING & CALIBRATION",
         "modules": [
             "data",
             "intake",
             "ai",
             "analytics",
             "hotspots",
+            "demand-shadow",
             "silent-need",
             "digital-twin",
             "evidence",
             "sandbox",
-            "impact"
+            "impact",
+            "learning"
         ]
     }
 
@@ -39,9 +43,12 @@ api_v1_router.include_router(intake_router)
 api_v1_router.include_router(ai_router)
 api_v1_router.include_router(analytics_router)
 api_v1_router.include_router(hotspots_router)
+api_v1_router.include_router(demand_shadow_router)
 api_v1_router.include_router(silent_need_router)
 api_v1_router.include_router(digital_twin_router)
 api_v1_router.include_router(evidence_router)
 api_v1_router.include_router(sandbox_router)
 api_v1_router.include_router(impact_router)
+api_v1_router.include_router(learning_router)
+
 
