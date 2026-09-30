@@ -8,6 +8,7 @@ from app.api.v1.evidence import router as evidence_router
 from app.api.v1.sandbox import router as sandbox_router
 from app.api.v1.impact import router as impact_router
 from app.api.v1.data import data_router
+from app.api.v1.ai import router as ai_router
 
 api_v1_router = APIRouter()
 
@@ -18,10 +19,11 @@ async def get_api_v1_version():
     return {
         "version": "v1",
         "status": "active",
-        "phase": "PHASE 1 - FOUNDATION | PHASE 2 - DATA ENGINEERING",
+        "phase": "PHASE 1 - FOUNDATION | PHASE 2 - DATA ENGINEERING | PHASE 3 - MULTILINGUAL INTAKE | PHASE 4 - AI PERCEPTION",
         "modules": [
             "data",
             "intake",
+            "ai",
             "analytics",
             "hotspots",
             "silent-need",
@@ -34,6 +36,7 @@ async def get_api_v1_version():
 
 api_v1_router.include_router(data_router)
 api_v1_router.include_router(intake_router)
+api_v1_router.include_router(ai_router)
 api_v1_router.include_router(analytics_router)
 api_v1_router.include_router(hotspots_router)
 api_v1_router.include_router(silent_need_router)

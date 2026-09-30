@@ -7,7 +7,13 @@ import {
   GroundedEvidenceBrief,
   CivicDigitalTwin,
   SimulationResult,
-  ImpactMetric
+  ImpactMetric,
+  SupportedLanguagesResponse,
+  CitizenRequestStatus,
+  AIPerceptionResult,
+  DemandCluster,
+  SimilarRequest,
+  ControlledTaxonomy
 } from '../types';
 
 export interface SystemInfo {
@@ -144,6 +150,15 @@ class ApiClient {
     return res.data;
   }
 
+  public async getSupportedLanguages(): Promise<SupportedLanguagesResponse> {
+    return this.request<SupportedLanguagesResponse>('/api/v1/intake/languages');
+  }
+
+  public async getRequestStatus(requestId: string): Promise<CitizenRequestStatus> {
+    const res = await this.request<{ success: boolean; data: CitizenRequestStatus }>(`/api/v1/intake/${requestId}`);
+    return res.data;
+  }
+
   public async fetchCommandCenterKPIs(): Promise<CommandCenterKPIs> {
     const res = await this.request<{ success: boolean; data: CommandCenterKPIs }>('/api/v1/analytics/command-center');
     return res.data;
@@ -236,6 +251,53 @@ class ApiClient {
   }> {
     return this.request('/api/v1/data/quality');
   }
+
+  // =========================================================================
+  // PHASE 4: AI PERCEPTION & SEMANTIC CLUSTERING ENDPOINTS
+  // =========================================================================
+
+  public async processAIRequest(requestId: string): Promise<AIPerceptionResult> {
+    return this.request<AIPerceptionResult>(`/api/v1/ai/process/${requestId}`, {
+      method: 'POST'
+    });
+  }
+
+  public async getAIStatus(requestId: string): Promise<AIPerceptionResult> {
+    return this.request<AIPerceptionResult>(`/api/v1/ai/status/${requestId}`);
+  }
+
+  public async fetchDemandClusters(params?: {
+    geo_id?: string;
+    category?: string;
+    limit?: number;
+  }): Promise<{ total: number; clusters: DemandCluster[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.geo_id) searchParams.append('geo_id', params.geo_id);
+    if (params?.category) searchParams.append('category', params.category);
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return this.request<{ total: number; clusters: DemandCluster[] }>(`/api/v1/ai/clusters${query}`);
+  }
+
+  public async fetchClusterDetails(clusterId: string): Promise<DemandCluster> {
+    return this.request<DemandCluster>(`/api/v1/ai/clusters/${clusterId}`);
+  }
+
+  public async fetchSimilarRequests(requestId: string, limit: number = 5): Promise<{
+    request_id: string;
+    total_matches: number;
+    matches: SimilarRequest[];
+  }> {
+    return this.request<{
+      request_id: string;
+      total_matches: number;
+      matches: SimilarRequest[];
+    }>(`/api/v1/ai/similar/${requestId}?limit=${limit}`);
+  }
+
+  public async fetchTaxonomy(): Promise<ControlledTaxonomy> {
+    return this.request<ControlledTaxonomy>('/api/v1/ai/taxonomy');
+  }
 }
 
 export const apiClient = new ApiClient('');
@@ -243,6 +305,8 @@ export const apiClient = new ApiClient('');
 // Export wrapper functions for seamless backward-compatibility
 export const submitTextRequest = (p: any) => apiClient.submitTextRequest(p);
 export const submitVoiceRequest = (f: FormData) => apiClient.submitVoiceRequest(f);
+export const getSupportedLanguages = () => apiClient.getSupportedLanguages();
+export const getRequestStatus = (id: string) => apiClient.getRequestStatus(id);
 export const fetchCommandCenterKPIs = () => apiClient.fetchCommandCenterKPIs();
 export const fetchDemandShadowGrid = () => apiClient.fetchDemandShadowGrid();
 export const fetchHotspots = (c?: string) => apiClient.fetchHotspots(c);
@@ -255,3 +319,12 @@ export const getSystemInfo = () => apiClient.getSystemInfo();
 export const getHealthStatus = () => apiClient.getHealthStatus();
 export const getReadinessStatus = () => apiClient.getReadinessStatus();
 export const getApiV1Status = () => apiClient.getApiV1Status();
+
+// Phase 4 Exports
+export const processAIRequest = (id: string) => apiClient.processAIRequest(id);
+export const getAIStatus = (id: string) => apiClient.getAIStatus(id);
+export const fetchDemandClusters = (p?: any) => apiClient.fetchDemandClusters(p);
+export const fetchClusterDetails = (id: string) => apiClient.fetchClusterDetails(id);
+export const fetchSimilarRequests = (id: string, l?: number) => apiClient.fetchSimilarRequests(id, l);
+export const fetchTaxonomy = () => apiClient.fetchTaxonomy();
+

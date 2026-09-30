@@ -104,6 +104,30 @@ class BigQueryWarehouse:
         self._store[table_name].extend(records)
         return True
 
+    def update_record(self, table_name: str, key_field: str, key_val: Any, updates: Dict[str, Any]) -> bool:
+        """Updates matching record in BigQuery or in-memory store."""
+        if not self.use_mock and self.client:
+            try:
+                set_clauses = [f"{k} = @{k}" for k in updates.keys()]
+                query = f"UPDATE `{self.project_id}.{self.dataset_id}.{table_name}` SET {', '.join(set_clauses)} WHERE {key_field} = @key_val"
+                job_config = bigquery.QueryJobConfig(
+                    query_parameters=[
+                        bigquery.ScalarQueryParameter("key_val", "STRING", str(key_val)),
+                        *[bigquery.ScalarQueryParameter(k, "STRING", str(v)) for k, v in updates.items()]
+                    ]
+                )
+                self.client.query(query, job_config=job_config).result()
+            except Exception as e:
+                logger.error(f"Failed to update record in {table_name}: {e}")
+                return False
+
+        records = self._store.get(table_name, [])
+        for r in records:
+            if r.get(key_field) == key_val:
+                r.update(updates)
+                return True
+        return False
+
     def get_records(self, table_name: str) -> List[Dict[str, Any]]:
         return self._store.get(table_name, [])
 
@@ -150,9 +174,13 @@ from app.db.repositories.demographics_repository import DemographicsRepository
 from app.db.repositories.infrastructure_repository import InfrastructureRepository
 from app.db.repositories.investment_repository import InvestmentRepository
 from app.db.repositories.citizen_request_repository import CitizenRequestRepository
+from app.db.repositories.embedding_repository import EmbeddingRepository
+from app.db.repositories.demand_cluster_repository import DemandClusterRepository
 
 geography_repo = GeographyRepository(db)
 demographics_repo = DemographicsRepository(db)
 infrastructure_repo = InfrastructureRepository(db)
 investment_repo = InvestmentRepository(db)
 citizen_request_repo = CitizenRequestRepository(db)
+embedding_repo = EmbeddingRepository(db)
+demand_cluster_repo = DemandClusterRepository(db)

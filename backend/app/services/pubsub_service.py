@@ -55,9 +55,10 @@ class PubSubService:
 
     def publish_event(
         self,
-        data: Dict[str, Any],
+        data: Optional[Dict[str, Any]] = None,
         topic_name: Optional[str] = None,
-        attributes: Optional[Dict[str, str]] = None
+        attributes: Optional[Dict[str, str]] = None,
+        payload: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Publishes structured JSON event to the specified or default Pub/Sub topic.
@@ -65,7 +66,8 @@ class PubSubService:
         """
         target_topic = topic_name or self.default_topic
         topic_path = self.get_topic_path(target_topic)
-        payload_bytes = json.dumps(data).encode("utf-8")
+        event_dict = data if data is not None else (payload or {})
+        payload_bytes = json.dumps(event_dict).encode("utf-8")
         attrs = attributes or {}
 
         if not self.use_mock and self.publisher:

@@ -1,68 +1,96 @@
 import time
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
 
 from app.schemas.request_schemas import TextInputRequest
 from app.schemas.response_schemas import BaseAPIResponse, IntakeProcessResponse
-from app.services.stt_service import stt_service
-from app.services.translation_service import translation_service
-from app.services.gemini_service import gemini_service
-from app.services.embedding_service import embedding_service
-from app.services.fusion_service import fusion_service
-from app.db.bigquery_client import db
 from app.core.logging import logger
+from app.core.exceptions import JanSetuException, ResourceNotFoundException
+from app.core.languages import list_supported_languages, normalize_language_code, LanguageConfig
+from app.services.citizen_intake_service import citizen_intake_service
+from app.services.gemini_service import gemini_service
+from app.services.fusion_service import fusion_service
+from app.services.embedding_service import embedding_service
+from app.db.bigquery_client import geography_repo
 
 router = APIRouter(prefix="/intake", tags=["Citizen Intake"])
+
+@router.get("/languages", response_model=BaseAPIResponse[List[LanguageConfig]])
+async def get_supported_languages():
+    """Returns the list of currently supported Indian languages for citizen intake."""
+    langs = list_supported_languages()
+    return BaseAPIResponse(
+        message="Supported languages retrieved successfully",
+        data=langs
+    )
+
+@router.get("/{request_id}", response_model=BaseAPIResponse[Dict[str, Any]])
+async def get_intake_request_status(request_id: str):
+    """Retrieves non-sensitive processing status of a previously submitted citizen request."""
+    status_data = citizen_intake_service.get_request_status(request_id)
+    return BaseAPIResponse(
+        message="Request status retrieved successfully",
+        data=status_data
+    )
 
 @router.post("/voice", response_model=BaseAPIResponse[IntakeProcessResponse])
 async def ingest_citizen_voice(
     audio_file: UploadFile = File(...),
+    language: Optional[str] = Form(None),
     declared_language: Optional[str] = Form(None),
+    channel: str = Form("voice_web"),
     source_channel: str = Form("voice_web"),
+    geo_id: Optional[str] = Form(None),
+    declared_geo_id: Optional[str] = Form(None),
     declared_state: Optional[str] = Form(None),
-    declared_district: Optional[str] = Form(None),
-    declared_geo_id: Optional[str] = Form(None)
+    declared_district: Optional[str] = Form(None)
 ):
     """
-    Ingests citizen voice audio in regional Indian languages (Tamil, Hindi, Telugu, etc.),
-    transcribes via Speech-to-Text, translates via Google Translation, extracts structured
-    infrastructure parameters using Gemini 2.5, and fuses into semantic clusters.
+    Ingests citizen voice audio in regional Indian languages (Tamil, Hindi, Telugu, English, etc.),
+    stores raw audio in Google Cloud Storage, transcribes via Google Cloud Speech-to-Text (Chirp 2),
+    sanitizes PII, translates via Translation Advanced v3, persists into BigQuery, and publishes
+    a Pub/Sub event.
     """
     start_time = time.time()
     audio_bytes = await audio_file.read()
-    if not audio_bytes:
-        raise HTTPException(status_code=400, detail="Empty audio payload received.")
+    filename = audio_file.filename or "citizen_recording.wav"
+    content_type = audio_file.content_type
 
-    # 1. Speech to Text
-    transcript, detected_lang, confidence = await stt_service.transcribe_audio(
+    # Support flexible parameters
+    selected_language = language or declared_language
+    selected_geo_id = geo_id or declared_geo_id
+    active_channel = channel if channel != "voice_web" else source_channel
+
+    # 1. Execute Core Citizen Intake Pipeline
+    intake_res = await citizen_intake_service.process_voice_input(
         audio_bytes=audio_bytes,
-        declared_language=declared_language
+        filename=filename,
+        content_type=content_type,
+        language=selected_language,
+        geo_id=selected_geo_id,
+        channel=active_channel
     )
 
-    # 2. Translation & Normalization
-    translation, lang_iso = await translation_service.translate_to_english(
-        text=transcript,
-        source_lang=detected_lang
-    )
+    request_id = intake_res["request_id"]
+    transcript = intake_res["original_transcript"]
+    translation = intake_res["normalized_text"]
+    canonical_lang = intake_res["language"]
+    short_lang = canonical_lang.split("-")[0]
+    matched_geo = intake_res["geo_id"]
 
-    # 3. Gemini Structured Extraction
+    # 2. Downstream AI Extraction & Cluster Assignment (for backward compatibility)
     extraction = await gemini_service.extract_request_intelligence(
         transcript=transcript,
         english_translation=translation,
-        detected_language=lang_iso
+        detected_language=short_lang
     )
 
-    # Resolve Administrative Geography
-    matched_geo = declared_geo_id or extraction.location.block_or_taluk or "IND_TN_DHM_HRR"
-    matched_area = f"{extraction.location.block_or_taluk or 'Harur'}, {extraction.location.district or 'Dharmapuri'}"
+    geo_node = geography_repo.get_by_geo_id(matched_geo)
+    matched_area = geo_node.get("geo_name", "Harur Block") if geo_node else "Local Administrative Area"
 
-    # 4. Multilingual Dense Embedding
     embedding = await embedding_service.generate_embedding(translation)
-
-    # 5. Semantic Request Fusion
-    request_id = f"REQ-VOICE-{uuid.uuid4().hex[:8].upper()}"
     cluster = await fusion_service.assign_or_create_cluster(
         request_id=request_id,
         category=extraction.primary_category,
@@ -72,40 +100,13 @@ async def ingest_citizen_voice(
         severity=extraction.severity
     )
 
-    # 6. BigQuery Persistence
-    req_record = {
-        "request_id": request_id,
-        "timestamp": datetime.utcnow().isoformat(),
-        "geo_id": matched_geo,
-        "source_channel": source_channel,
-        "detected_language": lang_iso,
-        "audio_gcs_uri": f"gs://jansetu-citizen-audio/{request_id}.wav",
-        "original_transcript": transcript,
-        "english_translation": translation,
-        "primary_category": extraction.primary_category,
-        "subcategory": extraction.subcategory,
-        "specific_issue": extraction.specific_issue,
-        "extracted_location_name": extraction.location.raw_location_text,
-        "latitude": extraction.location.approximate_latitude,
-        "longitude": extraction.location.approximate_longitude,
-        "severity": extraction.severity,
-        "urgency_score": extraction.urgency_score,
-        "affected_group": extraction.affected_group,
-        "time_pattern": extraction.time_pattern,
-        "entities": extraction.key_entities,
-        "processing_status": "clustered",
-        "is_synthetic": False,
-        "confidence_score": confidence
-    }
-    db.insert_records("citizen_requests", [req_record])
-
     total_time_ms = int((time.time() - start_time) * 1000)
 
     data = IntakeProcessResponse(
         request_id=request_id,
         status="PROCESSED",
-        source_channel=source_channel,
-        detected_language=lang_iso,
+        source_channel=active_channel,
+        detected_language=short_lang,
         original_text=transcript,
         english_translation=translation,
         extraction=extraction,
@@ -116,38 +117,47 @@ async def ingest_citizen_voice(
         processing_time_ms=total_time_ms,
         is_synthetic=False
     )
-    return BaseAPIResponse(message="Citizen voice request successfully processed and fused", data=data)
+    return BaseAPIResponse(message="Citizen voice request successfully processed, translated, and queued", data=data)
 
 @router.post("/text", response_model=BaseAPIResponse[IntakeProcessResponse])
 async def ingest_citizen_text(payload: TextInputRequest):
     """
-    Ingests citizen text in any Indian script or English, executes Gemini 2.5 entity
-    extraction, computes dense vectors, and attaches request to the civic grid.
+    Ingests citizen text in any supported Indian script or English,
+    scrubs PII, translates via Translation Advanced v3, persists canonical
+    request in BigQuery, and broadcasts a Pub/Sub intake event.
     """
     start_time = time.time()
 
-    # 1. Translation
-    translation, lang_iso = await translation_service.translate_to_english(
+    selected_language = payload.language or payload.detected_language
+    selected_geo_id = payload.geo_id or payload.declared_geo_id
+    active_channel = payload.channel or payload.source_channel
+
+    # 1. Execute Core Citizen Intake Pipeline
+    intake_res = await citizen_intake_service.process_text_input(
         text=payload.text,
-        source_lang=payload.detected_language
+        language=selected_language,
+        geo_id=selected_geo_id,
+        channel=active_channel
     )
 
-    # 2. Gemini Structured Extraction
+    request_id = intake_res["request_id"]
+    transcript = intake_res["original_transcript"]
+    translation = intake_res["normalized_text"]
+    canonical_lang = intake_res["language"]
+    short_lang = canonical_lang.split("-")[0]
+    matched_geo = intake_res["geo_id"]
+
+    # 2. Downstream AI Extraction & Cluster Assignment (for backward compatibility)
     extraction = await gemini_service.extract_request_intelligence(
-        transcript=payload.text,
+        transcript=transcript,
         english_translation=translation,
-        detected_language=lang_iso
+        detected_language=short_lang
     )
 
-    # Resolve Geo ID
-    matched_geo = payload.declared_geo_id or extraction.location.block_or_taluk or "IND_TN_DHM_HRR"
-    matched_area = f"{extraction.location.block_or_taluk or 'Local Block'}, {extraction.location.district or 'District'}"
+    geo_node = geography_repo.get_by_geo_id(matched_geo)
+    matched_area = geo_node.get("geo_name", "Harur Block") if geo_node else "Local Administrative Area"
 
-    # 3. Dense Vector Embedding
     embedding = await embedding_service.generate_embedding(translation)
-
-    # 4. Fusion
-    request_id = f"REQ-TEXT-{uuid.uuid4().hex[:8].upper()}"
     cluster = await fusion_service.assign_or_create_cluster(
         request_id=request_id,
         category=extraction.primary_category,
@@ -157,41 +167,14 @@ async def ingest_citizen_text(payload: TextInputRequest):
         severity=extraction.severity
     )
 
-    # 5. BigQuery Persistence
-    req_record = {
-        "request_id": request_id,
-        "timestamp": datetime.utcnow().isoformat(),
-        "geo_id": matched_geo,
-        "source_channel": payload.source_channel,
-        "detected_language": lang_iso,
-        "audio_gcs_uri": None,
-        "original_transcript": payload.text,
-        "english_translation": translation,
-        "primary_category": extraction.primary_category,
-        "subcategory": extraction.subcategory,
-        "specific_issue": extraction.specific_issue,
-        "extracted_location_name": extraction.location.raw_location_text,
-        "latitude": payload.latitude or extraction.location.approximate_latitude,
-        "longitude": payload.longitude or extraction.location.approximate_longitude,
-        "severity": extraction.severity,
-        "urgency_score": extraction.urgency_score,
-        "affected_group": extraction.affected_group,
-        "time_pattern": extraction.time_pattern,
-        "entities": extraction.key_entities,
-        "processing_status": "clustered",
-        "is_synthetic": False,
-        "confidence_score": 0.98
-    }
-    db.insert_records("citizen_requests", [req_record])
-
     total_time_ms = int((time.time() - start_time) * 1000)
 
     data = IntakeProcessResponse(
         request_id=request_id,
         status="PROCESSED",
-        source_channel=payload.source_channel,
-        detected_language=lang_iso,
-        original_text=payload.text,
+        source_channel=active_channel,
+        detected_language=short_lang,
+        original_text=transcript,
         english_translation=translation,
         extraction=extraction,
         matched_geo_id=matched_geo,
@@ -201,4 +184,4 @@ async def ingest_citizen_text(payload: TextInputRequest):
         processing_time_ms=total_time_ms,
         is_synthetic=False
     )
-    return BaseAPIResponse(message="Citizen text request successfully processed and fused", data=data)
+    return BaseAPIResponse(message="Citizen text request successfully processed, translated, and queued", data=data)

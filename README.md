@@ -303,5 +303,97 @@ Run the complete regression suite (40 automated tests covering Phase 1 foundatio
 backend\.venv\Scripts\pytest -v
 ```
 
-# JANSETU
-# JANSETU
+---
+
+## 🗣️ Phase 3: Multilingual Citizen Input Layer
+
+### 1. Architectural Scope & Principles
+Phase 3 establishes the production-grade **Multilingual Citizen Intake Pipeline** designed as an accessible Digital Public Good. It allows citizens across India to express infrastructure gaps in their native mother tongue via audio voice recordings or indigenous text script:
+- **Speech-to-Text (Chirp 2):** High-accuracy transcription tailored to regional Indian languages and acoustic environments.
+- **Translation Advanced (v3):** High-fidelity translation normalizing regional vernacular into a standardized English semantic pivot without destroying original citizen expression.
+- **PII Sanitation:** Automated regex filtering of Indian phone numbers (+91..., 10-digit mobile) and email addresses before long-term analytical storage.
+- **Cloud Storage:** Immutable raw audio capture stored deterministically at gs://<bucket>/audio/{YYYY-MM-DD}/{request_id}.{ext}.
+- **BigQuery Analytical Persistence:** Structured storage in jansetu_intel.citizen_requests maintaining both original_transcript and 
+ormalized_text.
+- **Pub/Sub Event Ingestion:** Asynchronous event broadcasting (citizen.request.created) to decouple intake from downstream cluster fusion.
+
+### 2. Supported Languages & Registry
+The centralized LANGUAGE_REGISTRY in ackend/app/core/languages.py provides canonical BCP-47 language configuration:
+
+| Language Code | Display Name | Native Name | Script | Chirp 2 STT | Translation v3 | Sample Scenario |
+| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
+| 	a-IN | Tamil | தமிழ் | Tamil | ✅ | ✅ | Harur Bus Service Gap |
+| hi-IN | Hindi | हिन्दी | Devanagari | ✅ | ✅ | Pindra Drinking Water Crisis |
+| 	e-IN | Telugu | తెలుగు | Telugu | ✅ | ✅ | Jadcherla PHC Doctor Shortage |
+| n-IN | Indian English | English | Latin | ✅ | ✅ | Rural Arterial Road Damage |
+| mr-IN | Marathi | मराठी | Devanagari | ✅ | ✅ | Evening Bus Service (Extension) |
+| kn-IN | Kannada | ಕನ್ನಡ | Kannada | ✅ | ✅ | Rural Transport (Extension) |
+
+### 3. Citizen Intake Endpoints
+
+| Method | Endpoint | Description | Content-Type |
+| :--- | :--- | :--- | :--- |
+| POST | /api/v1/intake/text | Ingests native script text, scrubs PII, translates, persists to BigQuery, and publishes to Pub/Sub. | pplication/json |
+| POST | /api/v1/intake/voice | Validates audio MIME/size, uploads to GCS, transcribes via Chirp 2, scrubs PII, translates, persists, and publishes event. | multipart/form-data |
+| GET | /api/v1/intake/{request_id} | Retrieves non-sensitive processing status, channel, language, geo_id, and timestamps. | pplication/json |
+| GET | /api/v1/intake/languages | Lists supported Indian languages with Chirp/Translation support flags and sample phrases. | pplication/json |
+
+### 4. Interactive Citizen Portal Frontend
+The frontend CitizenPortal.tsx delivers a native, accessible civic intake interface:
+- **4-Language Localization (i18n):** Complete UI localization across Tamil, Hindi, Telugu, and English.
+- **Browser MediaRecorder API:** Real-time audio recording with active timer, audio waveform/recording indicator, native audio playback element (<audio controls />), and re-record controls.
+- **Live Pipeline Stepper:** Step-by-step processing tracker (TRANSCRIBING → TRANSLATING → SAVED).
+- **Data Layer Confirmation:** Request tracking showing 
+equest_id, detected language, original submission, English semantic pivot, and BigQuery persistence confirmation.
+
+### 5. Automated Verification & Test Suite
+The complete JANSETU automated test suite contains **87 tests with 100% pass rate** across all completed phases:
+- **Phase 1 (Foundation):** 19 tests (FastAPI, Firebase Auth, BigQuery/PubSub/Storage client abstractions, centralized error handling).
+- **Phase 2 (Data Engineering):** 17 tests (5-level LGD hierarchy, 12 canonical tables, BigQuery GIS, seed pipelines, data quality audit).
+- **Phase 3 (Multilingual Intake):** 26 tests (Tamil/Hindi/Telugu/English text, audio validation, Chirp 2 STT, Translation v3 resilience, PII scrubbing, GCS URI paths, status tracking, language registry).
+- **Phase 4 (AI Perception & Semantic Clustering):** 21 tests (Gemini extraction across sectors, prompt injection defense, authoritative geo_id preservation, 768-dim embeddings, cross-lingual cosine similarity, demand clustering with true counts, REST endpoints).
+- **Prototype Baseline:** 4 tests (Static UI, basic intake).
+
+```bash
+# Execute entire 87-test test suite
+backend\.venv\Scripts\pytest -v
+
+# Execute Phase 4 AI Perception tests only
+backend\.venv\Scripts\pytest -v backend\tests\test_phase4_ai_perception.py
+```
+
+---
+
+## 🧠 Phase 4: AI Perception & Semantic Clustering
+
+### 1. Architectural Scope & Principles
+Phase 4 transforms raw, unstructured citizen voice submissions from Phase 3 into typed, structured civic intelligence and dense vector representations without hallucination:
+- **Google Gemini 2.5 Pro (Structured Extraction):** Uses Pydantic JSON schema mode to extract primary categories, subcategories, concrete issues, severity (1–5), urgency (0.0–1.0), and non-sensitive demographic cohorts.
+- **Zero-Hallucination Guardrails:** The model is strictly prohibited from inventing population statistics, budgets, cost estimates, or administrative funding commitments. Output represents citizen perception, not state policy.
+- **Prompt-Injection Defense:** Citizen input is strictly isolated within `<CITIZEN_SUBMISSION_DATA>` delimiter blocks. Attempts to override instructions or schema are deflected into safe fallback records.
+- **Authoritative Location Immutability:** The verified administrative `geo_id` from Phase 3 is immutable; model guesses from raw text only populate contextual location strings.
+- **Controlled Civic Taxonomy:** 12 primary infrastructure categories (`transport`, `water`, `healthcare`, `roads`, `education`, `electricity`, `sanitation`, `digital_connectivity`, `agriculture`, `housing`, `public_safety`, `other`) and 8 non-sensitive cohorts (`students`, `elderly`, `women`, `farmers`, `children`, `workers`, `patients`, `general_population`).
+- **Vertex AI Multilingual Vector Embeddings:** 768-dimensional dense vector embeddings generated with unit-length L2 normalization. Shared domain subspaces ensure cross-lingual cosine similarity $\ge 0.70$ between Tamil, Hindi, Telugu, and English.
+- **BigQuery Vector Search:** High-performance vector indexing with spatial (`geo_id`) and sectoral (`category`) pre-filtering and a centralized similarity threshold ($0.72$).
+- **Semantic Demand Clustering:** Clusters requests sharing the *same* `geo_id` and *same* `category` using deterministic identifiers (`CLS-{CAT}-{GEO}-{HASH}`). Tracks actual member requests and true submission counts (never fabricated figures).
+- **Mandatory Policy Caution:** Every AI perception output and UI surface includes the prominent disclaimer: *"AI-Derived Interpretation — Not Official Policy"*.
+
+### 2. Phase 4 REST API Endpoints
+
+| Method | Endpoint | Description | Content-Type |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/ai/process/{request_id}` | Runs full AI perception pipeline: Gemini extraction → 768-D embedding → vector search → demand clustering → Pub/Sub broadcast. | `application/json` |
+| `GET` | `/api/v1/ai/status/{request_id}` | Retrieves AI extraction parameters, embedding status, and cluster assignment. | `application/json` |
+| `GET` | `/api/v1/ai/clusters` | Lists synthesized semantic demand clusters with spatial (`geo_id`) and sector (`category`) filtering. | `application/json` |
+| `GET` | `/api/v1/ai/clusters/{cluster_id}` | Retrieves full cluster metadata, representative issue, and actual member request IDs. | `application/json` |
+| `GET` | `/api/v1/ai/similar/{request_id}` | Executes BigQuery Vector Search finding semantically related community complaints. | `application/json` |
+| `GET` | `/api/v1/ai/taxonomy` | Returns the complete controlled JANSETU civic taxonomy of categories, subcategories, and cohorts. | `application/json` |
+
+### 3. Frontend AI Perception View (`AIPerceptionView.tsx`)
+A dedicated frontend UI component integrated into the JANSETU sovereign command console:
+- **Prominent Civic Disclaimer:** Clear yellow/amber caution banner: *"AI-Derived Interpretation — Not Official Policy"*.
+- **Interactive Pipeline Runner:** Execute AI perception on any existing citizen request ID with quick-sample buttons (Harur bus service, PHC doctor shortage, Kaveripattinam water crisis).
+- **Structured Perception Card:** Visualizes primary sector, subcategory, demographic cohort, authoritative `geo_id`, 5-level severity meter, urgency progress bar, extracted infrastructure gap, actionable summary, and model provenance.
+- **Vertex AI Embedding Card:** Displays strict 768-D confirmation, cross-lingual subspace signature, BigQuery vector engine persistence, and an interactive 48-dimension vector spectrum heatmap.
+- **Demand Clusters Explorer:** Live sectoral filtering, true report counts, average severity, and representative issues.
+- **Vector Search Similarity Results:** Live display of related citizen requests exceeding the 0.72 cosine similarity threshold with match percentages.

@@ -23,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'foundation', label: 'Phase 1 Foundation', icon: ShieldCheck },
     { id: 'data-foundation', label: 'Data Foundation', icon: Database },
     { id: 'citizen', label: 'Citizen Voice', icon: Radio },
+    { id: 'ai-perception', label: 'AI Perception & Clustering', icon: Sparkles },
     { id: 'command-center', label: 'Command Center', icon: BarChart3 },
     { id: 'hotspots', label: 'Demand Hotspots', icon: MapPin },
     { id: 'shadow-map', label: 'Demand Shadow Map', icon: Layers },

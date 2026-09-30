@@ -222,3 +222,120 @@ export interface ImpactMetric {
   measured_sentiment_recovery: number;
   is_verified: boolean;
 }
+
+export interface SupportedLanguage {
+  code: string;
+  name: string;
+  native_name: string;
+  script: string;
+  sample_phrase: string;
+  chirp_supported: boolean;
+  translation_supported: boolean;
+}
+
+export interface SupportedLanguagesResponse {
+  success: boolean;
+  languages: SupportedLanguage[];
+  supported_codes: string[];
+  default_language: string;
+}
+
+export interface CitizenRequestStatus {
+  request_id: string;
+  status: string;
+  channel: string;
+  language: string;
+  original_transcript?: string;
+  normalized_text?: string;
+  created_at?: string;
+  geo_id?: string;
+  audio_gcs_uri?: string;
+  translation_status?: string;
+  transcription_status?: string;
+}
+
+// =========================================================================
+// PHASE 4: AI PERCEPTION & SEMANTIC CLUSTERING TYPES
+// =========================================================================
+
+export interface GeminiExtraction {
+  primary_category: string;
+  subcategory: string;
+  urgency_score: number;
+  severity_level: number;
+  affected_demographic: string;
+  raw_location_text?: string;
+  extracted_entities: string[];
+  infrastructure_gap: string;
+  actionable_summary: string;
+  confidence_score: number;
+  hallucination_safeguards_passed: boolean;
+  extracted_at: string;
+  model_provenance?: string;
+}
+
+export interface AIPerceptionResult {
+  success: boolean;
+  request_id: string;
+  geo_id: string;
+  category: string;
+  subcategory: string;
+  urgency_score: number;
+  severity_level: number;
+  affected_demographic: string;
+  actionable_summary: string;
+  extraction: GeminiExtraction;
+  embedding: {
+    dimension: number;
+    model: string;
+    subspace_signature?: string;
+    preview: number[];
+  };
+  cluster: {
+    cluster_id: string;
+    title: string;
+    representative_issue: string;
+    total_requests: number;
+    created_new: boolean;
+  };
+  model_provenance: {
+    gemini_model: string;
+    embedding_model: string;
+    extraction_version: string;
+    clustering_version: string;
+  };
+  disclaimer: string;
+}
+
+export interface DemandCluster {
+  cluster_id: string;
+  geo_id: string;
+  category: string;
+  subcategory: string;
+  title: string;
+  representative_issue: string;
+  request_count: number;
+  severity_score: number;
+  urgency_score: number;
+  affected_cohorts: string[];
+  request_ids: string[];
+  status: string;
+  first_reported_at: string;
+  last_updated_at: string;
+}
+
+export interface SimilarRequest {
+  request_id: string;
+  geo_id: string;
+  category: string;
+  original_text: string;
+  similarity_score: number;
+}
+
+export interface ControlledTaxonomy {
+  categories: string[];
+  subcategories: Record<string, string[]>;
+  allowed_cohorts: string[];
+}
+
+

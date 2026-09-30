@@ -48,29 +48,31 @@ class StorageService:
 
     def upload_object(
         self,
-        destination_blob_name: str,
-        data: bytes,
-        content_type: str = "application/octet-stream"
+        destination_blob_name: Optional[str] = None,
+        data: bytes = b"",
+        content_type: str = "application/octet-stream",
+        destination_path: Optional[str] = None
     ) -> str:
         """Uploads an object and returns the canonical gs:// path."""
+        target_blob = destination_blob_name or destination_path or "unnamed_object"
         if not self.use_mock and self.client:
             try:
                 bucket = self.client.bucket(self.bucket_name)
-                blob = bucket.blob(destination_blob_name)
+                blob = bucket.blob(target_blob)
                 blob.upload_from_string(data, content_type=content_type)
-                return self.generate_object_path(destination_blob_name)
+                return self.generate_object_path(target_blob)
             except Exception as e:
                 logger.error(f"Failed to upload object to GCS: {e}")
                 raise e
 
         # Mock storage
-        self._in_memory_store[destination_blob_name] = {
+        self._in_memory_store[target_blob] = {
             "size": len(data),
             "content_type": content_type,
             "data": data,
-            "path": self.generate_object_path(destination_blob_name)
+            "path": self.generate_object_path(target_blob)
         }
-        return self.generate_object_path(destination_blob_name)
+        return self.generate_object_path(target_blob)
 
     def retrieve_metadata(self, blob_name: str) -> Optional[Dict[str, Any]]:
         """Retrieves object metadata."""

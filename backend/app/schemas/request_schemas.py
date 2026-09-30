@@ -1,15 +1,39 @@
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 class TextInputRequest(BaseModel):
-    text: str = Field(..., min_length=3, max_length=5000, description="Raw citizen message in any Indian language or English")
-    detected_language: Optional[str] = Field(default=None, description="Optional ISO language code: ta, hi, te, en, etc.")
-    source_channel: str = Field(default="text_web", description="Channel: text_web, whatsapp, ivr, mobile_app, bhashini_api")
+    text: str = Field(..., min_length=1, max_length=5000, description="Raw citizen message in any Indian language or English")
+    language: Optional[str] = Field(default=None, description="ISO/BCP-47 language code: ta-IN, hi-IN, te-IN, en-IN, ta, hi, etc.")
+    detected_language: Optional[str] = Field(default=None, description="Alias for language")
+    channel: str = Field(default="text_web", description="Channel: text_web, whatsapp, ivr, mobile_app, bhashini_api")
+    source_channel: Optional[str] = Field(default=None, description="Alias for channel")
+    geo_id: Optional[str] = Field(default=None, description="Known Census LGD or Geo ID")
+    declared_geo_id: Optional[str] = Field(default=None, description="Alias for geo_id")
     declared_state: Optional[str] = Field(default=None, description="Citizen-selected state")
     declared_district: Optional[str] = Field(default=None, description="Citizen-selected district")
-    declared_geo_id: Optional[str] = Field(default=None, description="Known Census LGD or Geo ID")
     latitude: Optional[float] = Field(default=None, description="Device GPS latitude if consented")
     longitude: Optional[float] = Field(default=None, description="Device GPS longitude if consented")
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if "language" not in values and "detected_language" in values:
+                values["language"] = values["detected_language"]
+            elif "detected_language" not in values and "language" in values:
+                values["detected_language"] = values["language"]
+
+            if "geo_id" not in values and "declared_geo_id" in values:
+                values["geo_id"] = values["declared_geo_id"]
+            elif "declared_geo_id" not in values and "geo_id" in values:
+                values["declared_geo_id"] = values["geo_id"]
+
+            if "channel" not in values and "source_channel" in values:
+                values["channel"] = values["source_channel"]
+            elif "source_channel" not in values and "channel" in values:
+                values["source_channel"] = values["channel"]
+        return values
+
 
 class SandboxSimulationRequest(BaseModel):
     geo_id: str = Field(..., description="Target administrative unit, e.g., IND_TN_DHM_HRR")

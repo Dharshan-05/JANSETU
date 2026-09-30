@@ -5,6 +5,7 @@ import { Navbar } from './components/Navbar';
 import { Phase1FoundationShell } from './components/Phase1FoundationShell';
 import { DataFoundationView } from './components/DataFoundationView';
 import { CitizenPortal } from './components/CitizenPortal';
+import { AIPerceptionView } from './components/AIPerceptionView';
 import { CommandCenter } from './components/CommandCenter';
 import { HotspotsView } from './components/HotspotsView';
 import { DemandShadowMap } from './components/DemandShadowMap';
@@ -44,6 +45,7 @@ const AppContent: React.FC = () => {
         {activeTab === 'foundation' && <Phase1FoundationShell />}
         {activeTab === 'data-foundation' && <DataFoundationView />}
         {activeTab === 'citizen' && <CitizenPortal />}
+        {activeTab === 'ai-perception' && <AIPerceptionView />}
         {activeTab === 'command-center' && <CommandCenter onSelectRegion={handleSelectRegion} />}
         {activeTab === 'hotspots' && <HotspotsView onSelectRegion={handleSelectRegion} />}
         {activeTab === 'shadow-map' && (

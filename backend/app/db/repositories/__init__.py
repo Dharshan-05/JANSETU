@@ -4,6 +4,8 @@ from app.db.repositories.demographics_repository import DemographicsRepository
 from app.db.repositories.infrastructure_repository import InfrastructureRepository
 from app.db.repositories.investment_repository import InvestmentRepository
 from app.db.repositories.citizen_request_repository import CitizenRequestRepository
+from app.db.repositories.embedding_repository import EmbeddingRepository
+from app.db.repositories.demand_cluster_repository import DemandClusterRepository
 
 __all__ = [
     "BaseRepository",
@@ -11,5 +13,7 @@ __all__ = [
     "DemographicsRepository",
     "InfrastructureRepository",
     "InvestmentRepository",
-    "CitizenRequestRepository"
+    "CitizenRequestRepository",
+    "EmbeddingRepository",
+    "DemandClusterRepository"
 ]
