@@ -205,4 +205,102 @@ gcloud run deploy jansetu-core-service \
 2. **Zero-Hallucination Guardrails:** Gemini prompts enforce structured Pydantic schemas and strict grounded RAG contexts from BigQuery dimension tables.
 3. **Citizen Data Privacy:** Voice recordings have automated 90-day GCS lifecycle deletion policies; citizen telephone numbers or personal identities are never ingested into the analytical layer.
 4. **Transparent DPG Policy:** Clearly discloses synthetic benchmark records vs. official government open datasets.
+
+---
+
+## 🏛️ PHASE 2 — DATA ENGINEERING / DATA LAYER
+
+### 1. Data Architecture
+JANSETU's data architecture unifies multi-channel citizen input, official administrative registries, demographic deprivation benchmarks, and capital public expenditure into a single BigQuery warehouse.
+
+```
+                           CANONICAL INGESTION ARCHITECTURE
+ 
+   [ External Sources ]
+     ├── LGD Directory (Ministry of Panchayati Raj)
+     ├── Census 2011 / SECC Deprivation Indicators
+     ├── PMGSY Road Quality & Jal Jeevan Mission Dashboards
+     ├── Public Capex Portals & Scheme Sanctions
+     └── Multi-channel Citizen Requests (Web, Voice IVR, WhatsApp)
+                             │
+                             ▼
+   [ Raw / Staging Layer ]
+     └── Ingestion Pipelines (pipelines/ingestion/)
+                             │
+                             ▼
+   [ Validation & Privacy Sanitization ]
+     ├── Schema & Range Bounds Checking (pipelines/validation/validators.py)
+     ├── 5-Level Geographic Hierarchy Integrity (Country -> State -> District -> Block -> Village)
+     └── PII Scrubber (Redacts telephone numbers and emails)
+                             │
+                             ▼
+   [ Normalization & Provenance Attribution ]
+     ├── Canonical Field Resolution (Aliases & Standard Units)
+     ├── ST_GEOGPOINT Centroid & GIS Geometry Synthesis
+     └── Provenance Stamp (source, source_date, is_synthetic, ingestion_timestamp)
+                             │
+                             ▼
+   [ BigQuery Canonical Warehouse (12 Tables) ]
+     ├── Core Dataset: `jansetu_intel` (Configurable via BIGQUERY_DATASET)
+     └── Analytics Dataset: `jansetu_analytics` (Configurable via BIGQUERY_ANALYTICS_DATASET)
+```
+
+### 2. BigQuery Datasets & 12 Canonical Tables
+
+| Dataset | Table Name | Purpose / Domain | Partitioning | Clustering | GIS Fields |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `jansetu_intel` | `geography` | 5-level administrative hierarchy (LGD) | None | `state_code, geo_level` | `centroid`, `geometry` (`ST_GEOGPOINT`) |
+| `jansetu_intel` | `demographics` | Census & SECC vulnerability indicators | None | `geo_id` | Foreign key to `geography` |
+| `jansetu_intel` | `infrastructure` | Gap scores across PMGSY, JJM, HMIS | None | `geo_id, category` | Foreign key to `geography` |
+| `jansetu_intel` | `investments` | Public capex projects & scheme works | `DATE(created_at)` | `geo_id, category` | Foreign key to `geography` |
+| `jansetu_intel` | `citizen_requests` | Multilingual citizen request facts | `DATE(created_at)` | `geo_id, primary_category` | `location_geog` (`ST_GEOGPOINT`) |
+| `jansetu_intel` | `citizen_request_embeddings` | 768-dim multilingual vector representations | None | `geo_id` | VECTOR_SEARCH ready |
+| `jansetu_intel` | `demand_clusters` | Synthesized semantic demand clusters | None | `geo_id, category` | `centroid_latitude, centroid_longitude` |
+| `jansetu_intel` | `hotspots` | Geospatial civic demand concentrations | None | `geo_id` | `latitude, longitude` |
+| `jansetu_intel` | `silent_need_signals` | High deficit vs low reporting signals | None | `geo_id` | `latitude, longitude` |
+| `jansetu_intel` | `evidence_records` | Grounded audit citations & evidence trail | `DATE(created_at)` | `geo_id, source` | Foreign key to `geography` |
+| `jansetu_intel` | `policy_scenarios` | Counterfactual policy sandbox simulations | None | None | Foreign key to `geography` |
+| `jansetu_intel` | `impact_metrics` | Closed-loop pre/post intervention metrics | `DATE(created_at)` | `geo_id, project_id` | Foreign key to `geography` |
+
+### 3. Geographic Hierarchy & LGD Identity
+JANSETU strictly enforces the 5-level Indian administrative hierarchy:
+- **Level 0 (Country):** `IND` (India)
+- **Level 1 (State):** `IND_TN` (Tamil Nadu - LGD 33), `IND_UP` (Uttar Pradesh - LGD 09), `IND_TG` (Telangana - LGD 36), `IND_MH` (Maharashtra - LGD 27)
+- **Level 2 (District):** `IND_TN_DHM` (Dharmapuri), `IND_UP_VAR` (Varanasi), `IND_TG_MBN` (Mahabubnagar), `IND_MH_GDC` (Gadchiroli)
+- **Level 3 (Block / Taluk):** `IND_TN_DHM_HRR` (Harur), `IND_TN_DHM_PNG` (Pennagaram), `IND_UP_VAR_PND` (Pindra), `IND_UP_VAR_SVP` (Sevapuri), `IND_TG_MBN_JDC` (Jadcherla), `IND_MH_GDC_AHR` (Aheri)
+- **Level 4 (Village / Ward):** `IND_TN_DHM_HRR_V01` (Morappur), `IND_TN_DHM_HRR_V02` (Kottapatti), `IND_UP_VAR_PND_V01` (Pindra Bazar), etc.
+
+Every child record must point to a verified parent record. Leaf and branch nodes include WGS84 `latitude` and `longitude` with BigQuery GIS `centroid` points (`ST_GEOGPOINT`).
+
+### 4. Synthetic Data Policy & Provenance
+- **Official Open Datasets:** Attributed with authoritative sources (`OFFICIAL_LGD`, `SECC_CENSUS_INDIA`, `GOV_INFRA_AUDIT`).
+- **Synthetic Testing Records:** Explicitly tagged with `is_synthetic = TRUE` and `source = "JANSETU_SYNTHETIC_DEMO"`.
+- Under no circumstances is synthetic test data presented as official government claims or allocations.
+
+### 5. Running Migrations & Seeding Data
+
+#### Run BigQuery Schema Migration (DDL)
+```bash
+# In production, apply DDL using bq CLI or the Python migration runner
+python -c "from app.db.bigquery_client import db; db.run_migrations()"
+```
+
+#### Deterministic & Idempotent Seeding
+```bash
+# Populates multi-state pilot hierarchy and baseline intelligence data
+python -c "from pipelines.seed_india_data import seed_india_pilot_data; seed_india_pilot_data(clear_first=True)"
+```
+
+### 6. Data Quality & Diagnostic Verification
+The system provides automated data quality telemetry accessible via CLI or REST endpoints:
+- `GET /api/v1/data/status`: Reports BigQuery connectivity, canonical dataset configuration, and per-table row counts.
+- `GET /api/v1/data/geography/{geo_id}`: Traverses and returns the upward lineage to Country root and immediate child subdivisions.
+- `GET /api/v1/data/quality`: Audits row counts, null rates, duplicate counts, synthetic breakdown, and hierarchy integrity.
+
+### 7. Automated Testing
+Run the complete regression suite (40 automated tests covering Phase 1 foundation and Phase 2 data engineering):
+```bash
+backend\.venv\Scripts\pytest -v
+```
+
 # JANSETU
