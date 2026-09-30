@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Testing & Coverage
+.cache
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.npm
+
+# Secrets & Environment variables
+.env
+*.env
+!.env.example
+*.pem
+*.key
+*.cert
+service-account-key.json
+firebase-credentials.json
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
